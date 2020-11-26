@@ -25,7 +25,7 @@ steps:
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/_build/default/rel/vernemq'
+    rootFolderOrFile: '$(Build.SourcesDirectory)/_build/default/rel/vernemq'
     includeRootFolder: false
     archiveType: 'tar'
     archiveFile: '$(Build.ArtifactStagingDirectory)/vernemq.tar.gz'
