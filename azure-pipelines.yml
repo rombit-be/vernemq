@@ -9,29 +9,47 @@ trigger:
 pool:
   vmImage: 'ubuntu-18.04'
 
-steps:
-- script: |
-    sudo apt -y install erlang-src
-    wget -O- https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc | sudo apt-key add -
-    echo "deb https://packages.erlang-solutions.com/ubuntu bionic contrib" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
-    sudo apt update
-    sudo apt -y install erlang libsnappy-dev libcrypto++-dev
-    sudo apt -f install
-  displayName: 'Setup environment'
+stages:
+  - stage: preparation
+    jobs:
+      - job: version
+        displayName: 'Determine Version'
+        steps:
+          - bash: |
+              VERSION=$(git describe --long --always)
+              echo "##vso[build.updatebuildnumber]$VERSION"
+            displayName: "Set version"
 
-- script: |
-    make rel
-  displayName: 'make'
+  - stage: vernemq
+    displayName: 'VerneMQ'
+    dependsOn: preparation
+    jobs:
+      - job: build
+        displayName: Build
+        steps:
+        - script: |
+            sudo apt -y install erlang-src
+            wget -O- https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc | sudo apt-key add -
+            echo "deb https://packages.erlang-solutions.com/ubuntu bionic contrib" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
+            sudo apt update
+            sudo apt -y install erlang libsnappy-dev libcrypto++-dev
+            sudo apt -f install
+          displayName: 'Setup environment'
 
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Build.SourcesDirectory)/_build/default/rel/vernemq'
-    includeRootFolder: false
-    archiveType: 'tar'
-    archiveFile: '$(Build.ArtifactStagingDirectory)/vernemq.tar.gz'
-    replaceExistingArchive: true
-- task: PublishPipelineArtifact@1
-  inputs:
-    targetPath: '$(Build.ArtifactStagingDirectory)/vernemq.tar.gz'
-    artifact: 'vernemq'
-    publishLocation: 'pipeline'
+        - script: |
+            make rel
+          displayName: 'make'
+
+        - task: ArchiveFiles@2
+          inputs:
+            rootFolderOrFile: '$(Build.SourcesDirectory)/_build/default/rel/vernemq'
+            includeRootFolder: false
+            archiveType: 'tar'
+            archiveFile: '$(Build.ArtifactStagingDirectory)/vernemq.tar.gz'
+            replaceExistingArchive: true
+
+        - task: PublishPipelineArtifact@1
+          inputs:
+            targetPath: '$(Build.ArtifactStagingDirectory)/vernemq.tar.gz'
+            artifact: 'vernemq'
+            publishLocation: 'pipeline'
