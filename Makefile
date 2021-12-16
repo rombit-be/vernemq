@@ -1,6 +1,6 @@
 BASE_DIR         = $(shell pwd)
 ERLANG_BIN       = $(shell dirname $(shell which erl))
-GIT_VERSION      = $(shell git describe --tags)
+GIT_VERSION      = $(shell git describe --tags --always)
 OVERLAY_VARS    ?=
 REBAR ?= $(BASE_DIR)/rebar3
 
@@ -25,7 +25,8 @@ rel:
 	echo "{app_version, \"${GIT_VERSION}\"}." >> vars.generated
 ifeq ($(OVERLAY_VARS),)
 else
-	cat $(OVERLAY_VARS) >> vars.generated
+	echo "%% including OVERLAY_VARS from an additional file." >> vars.generated
+	echo \"./${OVERLAY_VARS}\". >> vars.generated
 endif
 	$(REBAR) $(PROFILE) release
 

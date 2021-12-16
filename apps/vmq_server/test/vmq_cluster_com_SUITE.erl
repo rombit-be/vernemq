@@ -18,6 +18,7 @@ init_per_suite(Config) ->
     end,
     ct:log("node name ~p", [node()]),
     Node = vmq_cluster_test_utils:start_node(test_com1, Config, default_case),
+    ct:pal("This is the default NODE : ~p~n", [Node]),
     {ok, _} = ct_cover:add_nodes([Node]),
     vmq_cluster_test_utils:wait_until_ready([Node]),
     [{node, Node}, S|Config].
@@ -75,6 +76,7 @@ connect_success_send_error(Config) ->
     recv_message(Socket2, hello_world).
 
 connect_success_send_error_timeout(Config) ->
+    ct:timetrap({minutes, 10}),
     % check that message isn't lost
     ClusterNodePid = cluster_node_pid(Config),
     {ok, ListenSocket} = gen_tcp:listen(12345, [binary, {reuseaddr, true}, {active, false}]),
