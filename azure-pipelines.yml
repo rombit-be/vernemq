@@ -1,0 +1,45 @@
+# C/C++ with GCC
+# Build your C/C++ project with GCC using make.
+# Add steps that publish test results, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/c-cpp/gcc
+
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- script: |
+    lsb_release -c
+    sudo apt -y install erlang-src
+    wget -O- https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc | sudo apt-key add -
+    echo "deb http://binaries2.erlang-solutions.com/ubuntu/ jammy-esl-erlang-25 contrib" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
+    sudo apt update
+    sudo apt -y install erlang libsnappy-dev libcrypto++-dev rebar
+    sudo apt -f install
+#    wget https://s3.amazonaws.com/rebar3/rebar3 --directory-prefix=/usr/local/bin
+#    echo "chmod +x /usr/local/bin/rebar3"
+#    chmod +x /usr/local/bin/rebar3
+#    echo "/usr/local/bin/rebar3 local install"
+#    /usr/local/bin/rebar3 local install
+#    echo "Displaying rebar3 version"
+#    /usr/local/bin/rebar3 --version
+  displayName: 'Setup environment'
+
+- script: |
+    make rel
+  displayName: 'make'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.SourcesDirectory)/_build/default/rel/vernemq'
+    includeRootFolder: false
+    archiveType: 'tar'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/vernemq.tar.gz'
+    replaceExistingArchive: true
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)/vernemq.tar.gz'
+    artifact: 'vernemq'
+    publishLocation: 'pipeline'
