@@ -7,7 +7,7 @@ trigger:
 - main
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'ubuntu-22.04'
 
 steps:
 - script: |
@@ -18,13 +18,6 @@ steps:
     sudo apt update
     sudo apt -y install erlang libsnappy-dev libcrypto++-dev rebar
     sudo apt -f install
-#    wget https://s3.amazonaws.com/rebar3/rebar3 --directory-prefix=/usr/local/bin
-#    echo "chmod +x /usr/local/bin/rebar3"
-#    chmod +x /usr/local/bin/rebar3
-#    echo "/usr/local/bin/rebar3 local install"
-#    /usr/local/bin/rebar3 local install
-#    echo "Displaying rebar3 version"
-#    /usr/local/bin/rebar3 --version
   displayName: 'Setup environment'
 
 - script: |
