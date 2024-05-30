@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -17,8 +18,10 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0,
-         start_query/3]).
+-export([
+    start_link/0,
+    start_query/3
+]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -31,16 +34,20 @@
 
 start_query(MgrPid, QueryString, Opts) when is_pid(MgrPid) ->
     Nodes = proplists:get_value(nodes, Opts, vmq_cluster:nodes()),
-    lists:foldl(fun(Node, {AccRes,AccBad}) ->
-                        try start_query_(Node, MgrPid, QueryString) of
-                            {ok, Pid} -> {[Pid|AccRes], AccBad};
-                            {error, _} -> {AccRes, [Node|AccBad]}
-                        catch
-                            %% if a remote supervisor isn't running
-                            exit:{noproc, _} ->
-                                {AccRes, [Node|AccBad]}
-                        end
-                end, {[],[]}, Nodes).
+    lists:foldl(
+        fun(Node, {AccRes, AccBad}) ->
+            try start_query_(Node, MgrPid, QueryString) of
+                {ok, Pid} -> {[Pid | AccRes], AccBad};
+                {error, _} -> {AccRes, [Node | AccBad]}
+            catch
+                %% if a remote supervisor isn't running
+                exit:{noproc, _} ->
+                    {AccRes, [Node | AccBad]}
+            end
+        end,
+        {[], []},
+        Nodes
+    ).
 
 start_query_(Node, MgrPid, QueryString) ->
     supervisor:start_child({?MODULE, Node}, [MgrPid, QueryString]).
@@ -53,9 +60,12 @@ start_link() ->
 %%%===================================================================
 
 init([]) ->
-    {ok, {{simple_one_for_one, 0, 1},
-          [{vmq_ql_query, {vmq_ql_query, start_link, []},
-           temporary, 1000, worker, [vmq_ql_query_action]}]}}.
+    {ok,
+        {{simple_one_for_one, 0, 1}, [
+            {vmq_ql_query, {vmq_ql_query, start_link, []}, temporary, 1000, worker, [
+                vmq_ql_query_action
+            ]}
+        ]}}.
 
 %%%===================================================================
 %%% Internal functions

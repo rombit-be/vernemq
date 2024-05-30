@@ -16,12 +16,12 @@ start_endpoint_tls(#{port:= _HTTPSPort,
                      keyfile:= _KeyFile,
                      certfile:= _CertFile,
                      cacertfile:= _CACertFile} = SocketOpts) ->
-    RanchOpts = #{num_acceptors => 1, socket_opts=> maps:to_list(SocketOpts)},
+    RanchOpts = maps:to_list(SocketOpts),
     {ok, _} = cowboy:start_tls(https, RanchOpts, #{env => #{dispatch => route()}}),
     ok.
 
 start_endpoint_clear(HTTPPort) ->
-    {ok, _} = cowboy:start_clear(http, [{port, HTTPPort}, {num_acceptors, 1}],
+    {ok, _} = cowboy:start_clear(http, [{port, HTTPPort}],
                                  #{env => #{dispatch => route()}}).
 
 route() -> cowboy_router:compile(
@@ -38,17 +38,17 @@ stop_endpoint_clear() ->
 init(Req, State) ->
     Hook = cowboy_req:header(<<"vernemq-hook">>, Req),
     {ok, Body, Req1} = cowboy_req:read_body(Req),
-    ?DEBUG andalso io:format(user, ">>> ~s~n", [jsx:prettify(Body)]),
+    ?DEBUG andalso io:format(user, ">>> ~s~n", [Body]),
     case cowboy_req:path(Req) of
         <<"/">> ->
-            {Code, Resp} = process_hook(Hook, jsx:decode(Body, [{labels, atom}, return_maps])),
+            {Code, Resp} = process_hook(Hook, vmq_json:decode(Body, [{labels, atom}, return_maps])),
             Req2 =
                 cowboy_req:reply(Code,
                                  #{<<"content-type">> => <<"text/json">>},
                                  encode(Resp), Req1),
             {ok, Req2, State};
         <<"/cache">> ->
-            {Code, Resp} = process_cache_hook(Hook, jsx:decode(Body, [{labels, atom}, return_maps])),
+            {Code, Resp} = process_cache_hook(Hook, vmq_json:decode(Body, [{labels, atom}, return_maps])),
             Req2 =
                 cowboy_req:reply(Code,
                                  #{<<"content-type">> => <<"text/json">>,
@@ -56,7 +56,7 @@ init(Req, State) ->
                                  encode(Resp), Req1),
             {ok, Req2, State};
         <<"/cache1s">> ->
-            {Code, Resp} = process_cache_hook(Hook, jsx:decode(Body, [{labels, atom}, return_maps])),
+            {Code, Resp} = process_cache_hook(Hook, vmq_json:decode(Body, [{labels, atom}, return_maps])),
             Req2 =
                 cowboy_req:reply(Code,
                                  #{<<"content-type">> => <<"text/json">>,
@@ -66,8 +66,8 @@ init(Req, State) ->
     end.
 
 encode(Term) ->
-    Encoded = jsx:encode(Term),
-    ?DEBUG andalso io:format(user, "<<< ~s~n", [jsx:prettify(Encoded)]),
+    Encoded = vmq_json:encode(Term),
+    ?DEBUG andalso io:format(user, "<<< ~s~n", [Encoded]),
     Encoded.
 
 
@@ -75,11 +75,23 @@ process_cache_hook(<<"auth_on_register">>, #{username := SenderPid}) ->
     Pid = list_to_pid(binary_to_list(SenderPid)),
     Pid ! cache_auth_on_register_ok,
     {200, #{result => <<"ok">>}};
+process_cache_hook(<<"auth_on_register_m5">>, #{username := SenderPid}) ->
+    Pid = list_to_pid(binary_to_list(SenderPid)),
+    Pid ! cache_auth_on_register_m5_ok,
+    {200, #{result => <<"ok">>}};
 process_cache_hook(<<"auth_on_publish">>, #{username := SenderPid}) ->
     Pid = list_to_pid(binary_to_list(SenderPid)),
     Pid ! cache_auth_on_publish_ok,
     {200, #{result => <<"ok">>}};
+process_cache_hook(<<"auth_on_publish_m5">>, #{username := SenderPid}) ->
+    Pid = list_to_pid(binary_to_list(SenderPid)),
+    Pid ! cache_auth_on_publish_ok,
+    {200, #{result => <<"ok">>}};
 process_cache_hook(<<"auth_on_subscribe">>, #{username := SenderPid}) ->
+    Pid = list_to_pid(binary_to_list(SenderPid)),
+    Pid ! cache_auth_on_subscribe_ok,
+    {200, #{result => <<"ok">>}};
+process_cache_hook(<<"auth_on_subscribe_m5">>, #{username := SenderPid}) ->
     Pid = list_to_pid(binary_to_list(SenderPid)),
     Pid ! cache_auth_on_subscribe_ok,
     {200, #{result => <<"ok">>}}.

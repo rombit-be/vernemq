@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -15,20 +16,23 @@
 -module(vmq_plumtree).
 -export([start/0, stop/0]).
 
--export([metadata_put/3,
-         metadata_get/2,
-         metadata_delete/2,
-         metadata_fold/3,
-         metadata_subscribe/1]).
+-export([
+    metadata_put/3,
+    metadata_get/2,
+    metadata_delete/2,
+    metadata_fold/3,
+    metadata_subscribe/1
+]).
 
--export([cluster_join/1,
-         cluster_leave/1,
-         cluster_members/0,
-         cluster_rename_member/2,
-         cluster_events_add_handler/2,
-         cluster_events_delete_handler/2,
-         cluster_events_call_handler/3]).
-
+-export([
+    cluster_join/1,
+    cluster_leave/1,
+    cluster_members/0,
+    cluster_rename_member/2,
+    cluster_events_add_handler/2,
+    cluster_events_delete_handler/2,
+    cluster_events_call_handler/3
+]).
 
 -define(TOMBSTONE, '$deleted').
 
@@ -47,7 +51,7 @@ cluster_leave(Node) ->
     {ok, Local} = plumtree_peer_service_manager:get_local_state(),
     {ok, Actor} = plumtree_peer_service_manager:get_actor(),
     case riak_dt_orswot:update({remove, Node}, Actor, Local) of
-        {error,{precondition,{not_present, Node}}} ->
+        {error, {precondition, {not_present, Node}}} ->
             {error, not_present};
         {ok, Merged} ->
             AllNodes = riak_dt_orswot:value(Local),
@@ -64,10 +68,11 @@ cluster_leave(Node) ->
             end
     end.
 
-multi_cast([Node|Rest], RegName, Msg) ->
+multi_cast([Node | Rest], RegName, Msg) ->
     _ = gen_server:cast({RegName, Node}, Msg),
     multi_cast(Rest, RegName, Msg);
-multi_cast([], _, _) -> ok.
+multi_cast([], _, _) ->
+    ok.
 
 cluster_members() ->
     {ok, LocalState} = plumtree_peer_service_manager:get_local_state(),
@@ -76,8 +81,14 @@ cluster_members() ->
 cluster_rename_member(OldName, NewName) ->
     {ok, LocalState} = plumtree_peer_service_manager:get_local_state(),
     {ok, Actor} = plumtree_peer_service_manager:get_actor(),
-    {ok, Merged} = riak_dt_orswot:update({update, [{remove, OldName},
-                                                   {add, NewName}]}, Actor, LocalState),
+    {ok, Merged} = riak_dt_orswot:update(
+        {update, [
+            {remove, OldName},
+            {add, NewName}
+        ]},
+        Actor,
+        LocalState
+    ),
     _ = gen_server:cast(plumtree_peer_service_gossip, {receive_state, Merged}).
 
 cluster_events_add_handler(Module, Opts) ->
@@ -103,4 +114,3 @@ metadata_fold(FullPrefix, Fun, Acc) ->
 
 metadata_subscribe(FullPrefix) ->
     plumtree_metadata_manager:subscribe(FullPrefix).
-

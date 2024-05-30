@@ -12,31 +12,36 @@
 -include_lib("clique/include/clique_status_types.hrl").
 -include_lib("stdout_formatter/include/stdout_formatter.hrl").
 
--record(context, {alert_set=false :: boolean(),
-                  output="" :: iolist()}).
+-record(context, {
+    alert_set = false :: boolean(),
+    output = "" :: iolist()
+}).
 
--spec write(status()) -> {iolist(), iolist()}.
+-spec write(clique_status:status()) -> {iolist(), iolist()}.
 write(Status) ->
     Ctx = clique_status:parse(Status, fun write_status/2, #context{}),
     {Ctx#context.output, []}.
 
 %% @doc Write status information in console format.
 -spec write_status(elem(), #context{}) -> #context{}.
-write_status(alert, Ctx=#context{alert_set=false}) ->
-    Ctx#context{alert_set=true};
+write_status(alert, Ctx = #context{alert_set = false}) ->
+    Ctx#context{alert_set = true};
 write_status(alert, Ctx) ->
     %% TODO: Should we just return an error instead?
     throw({error, nested_alert, Ctx});
 write_status(alert_done, Ctx) ->
-    Ctx#context{alert_set=false};
-write_status({list, Data}, Ctx=#context{output=Output}) ->
-    Ctx#context{output=Output++write_list(Data)};
-write_status({list, Title, Data}, Ctx=#context{output=Output}) ->
-    Ctx#context{output=Output++write_list(Title, Data)};
-write_status({text, Text}, Ctx=#context{output=Output}) ->
-    Ctx#context{output=Output++Text++"\n"};
-write_status({table, Rows}, Ctx=#context{output=Output}) ->
-    Ctx#context{output=Output++write_table(Rows)};
+    Ctx#context{alert_set = false};
+write_status({list, Data}, Ctx = #context{output = Output}) ->
+    Ctx#context{output = Output ++ write_list(Data)};
+write_status({list, Title, Data}, Ctx = #context{output = Output}) ->
+    Ctx#context{output = Output ++ write_list(Title, Data)};
+%% to capture "vmq-admin set" commands
+write_status({text, [Text, _, _]}, Ctx = #context{output = Output}) ->
+    Ctx#context{output = Output ++ Text ++ "\n"};
+write_status({text, Text}, Ctx = #context{output = Output}) ->
+    Ctx#context{output = Output ++ Text ++ "\n"};
+write_status({table, Rows}, Ctx = #context{output = Output}) ->
+    Ctx#context{output = Output ++ write_table(Rows)};
 write_status(done, Ctx) ->
     Ctx.
 
@@ -47,8 +52,11 @@ write_table(Rows0) ->
     Header = [Name || {Name, _Val} <- hd(Rows0)],
     Rows = [[Val || {_Name, Val} <- Row] || Row <- Rows0],
     Table = stdout_formatter:to_string(
-        #table{rows=[#row{cells = Header, props=#{title => true}} | Rows], 
-        props=#{cell_padding => {0,1}, border_drawing => ascii}}),
+        #table{
+            rows = [#row{cells = Header, props = #{title => true}} | Rows],
+            props = #{cell_padding => {0, 1}, border_drawing => ascii}
+        }
+    ),
     io_lib:format("~ts~n", [Table]).
 
 %% @doc Write a list horizontally
@@ -63,6 +71,10 @@ write_list(Title, Items) ->
     Title ++ ":" ++ write_list(Items) ++ "\n".
 
 write_list(Items) ->
-    lists:foldl(fun(Item, Acc) ->
-                    Acc++" "++Item
-                end, "", Items).
+    lists:foldl(
+        fun(Item, Acc) ->
+            Acc ++ " " ++ Item
+        end,
+        "",
+        Items
+    ).

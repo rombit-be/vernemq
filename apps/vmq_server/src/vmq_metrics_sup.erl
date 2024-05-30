@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -24,8 +25,7 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(I, Type, Args), {I, {I, start_link, Args},
-                               permanent, 5000, Type, [I]}).
+-define(CHILD(I, Type, Args), {I, {I, start_link, Args}, permanent, 5000, Type, [I]}).
 
 %%%===================================================================
 %%% API functions
@@ -39,14 +39,13 @@ start_link() ->
 %%%===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10},
-           [?CHILD(vmq_metrics, worker, []),
+    {ok,
+        {{one_for_one, 5, 10}, [
+            ?CHILD(vmq_metrics, worker, []),
             ?CHILD(vmq_graphite, worker, []),
-            ?CHILD(vmq_systree, worker, [])]}}.
+            ?CHILD(vmq_systree, worker, [])
+        ]}}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-
-

@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -17,11 +18,11 @@
 
 -export([fold/5]).
 
--callback fold(SubscriberId :: subscriber_id(),
-               Topic :: topic(),
-               FoldFun :: reg_view_fold_fun(),
-               Accumulator :: any()
-
+-callback fold(
+    SubscriberId :: subscriber_id(),
+    Topic :: topic(),
+    FoldFun :: reg_view_fold_fun(),
+    Accumulator :: any()
 ) -> any().
 fold(RegView, SubscriberId, Topic, FoldFun, Acc) ->
     RegView:fold(SubscriberId, Topic, FoldFun, Acc).

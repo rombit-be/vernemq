@@ -42,7 +42,8 @@ groups() ->
          allowed_protocol_versions_override_test,
          allowed_eccs_test,
          default_eccs_test,
-         invalid_eccs_test
+         invalid_eccs_test,
+         tls_handshake_timeout_test
         ],
     [{schema, [parallel], Tests}].
 
@@ -151,7 +152,7 @@ ssl_certs_opts_override_test(Config) ->
                         Base;
                     _ ->
                         [{["listener", LType, "mountpoint"], "mpval"},
-                         {["listener", LType, "mylistener", "mountpoint"], "overriden"}
+                         {["listener", LType, "mylistener", "mountpoint"], "overridden"}
                          | Base]
                 end
 
@@ -169,7 +170,7 @@ ssl_certs_opts_override_test(Config) ->
                 case IntName of
                     https -> skip;
                     _ ->
-                        "overriden"   = expect(Conf, [vmq_server, listeners, IntName,  {{127,0,0,1}, 1234}, mountpoint])
+                        "overridden"   = expect(Conf, [vmq_server, listeners, IntName,  {{127,0,0,1}, 1234}, mountpoint])
                 end
         end,
 
@@ -249,12 +250,14 @@ allowed_protocol_versions_inheritance_test(_Config) ->
     [3,4,5] = expect(Conf, [vmq_server, listeners, mqttwss,{{127,0,0,1}, 900}, allowed_protocol_versions]).
 
 allowed_eccs_test(_Config) ->
+    [_ | Allowed_ECCS] = lists:usort(ssl:eccs()),
+    ECC_List = string:join([atom_to_list(A) || A <- Allowed_ECCS], ", "),
     Conf = [
-            {["listener","ssl","default", "eccs"], "sect163r1,sect163r2,secp160k1,secp160r1"},
+            {["listener","ssl","default", "eccs"], ECC_List},
             {["listener","ssl","default"],"127.0.0.1:8884"}
             | global_substitutions()
            ],
-    ExpectedECCs = lists:usort([sect163r1,sect163r2,secp160k1,secp160r1]),
+    ExpectedECCs = Allowed_ECCS,
     ExpectedECCs = expect(Conf, [vmq_server, listeners, mqtts, {{127,0,0,1}, 8884}, eccs]).
 
 default_eccs_test(_Config) ->
@@ -267,9 +270,11 @@ default_eccs_test(_Config) ->
     KnownECCs = expect(Conf, [vmq_server, listeners, mqtts, {{127,0,0,1}, 8884}, eccs]).
 
 invalid_eccs_test(_Config) ->
+    Allowed_ECCS_and_wrong = lists:usort(ssl:eccs() ++ [wrong]),
+    ECC_List = string:join([atom_to_list(A) || A <- Allowed_ECCS_and_wrong], ", "),
     Conf = [
             %% tcp/ssl/mqtt
-            {["listener","ssl","default","eccs"], "[sect163r1,sect163r2,wrong,secp160r1]"},
+            {["listener","ssl","default","eccs"], ECC_List},
             {["listener","ssl","default"],"127.0.0.1:8884"}
             | global_substitutions()
            ],
@@ -303,6 +308,26 @@ allowed_protocol_versions_override_test(_Config) ->
     [4] = expect(Conf, [vmq_server, listeners, mqttws,{{127,0,0,1}, 800}, allowed_protocol_versions]),
     [4] = expect(Conf, [vmq_server, listeners, mqttwss,{{127,0,0,1}, 900}, allowed_protocol_versions]).
 
+tls_handshake_timeout_test(_Config) ->
+    Conf = [
+            %% tcp/ssl/mqtt
+            {["listener","ssl","default"],"127.0.0.1:8884"},
+            {["listener","ssl","default","tls_handshake_timeout"],"30000"},
+            %% websocket/ssl
+            {["listener","wss","default"],"127.0.0.1:900"},
+            {["listener","wss","default","tls_handshake_timeout"], "infinity"},
+            %% vmqs, inherited
+            {["listener","vmqs","tls_handshake_timeout"],"2000"},
+            {["listener","vmqs","default"],"127.0.0.1:1234"},
+            %% https, inherited
+            {["listener","https","tls_handshake_timeout"],"infinity"},
+            {["listener","https","default"],"127.0.0.1:443"}
+           | global_substitutions()
+           ],
+    30000 = expect(Conf, [vmq_server, listeners, mqtts,  {{127,0,0,1}, 8884}, tls_handshake_timeout]),
+    infinity = expect(Conf, [vmq_server, listeners, mqttwss,  {{127,0,0,1}, 900}, tls_handshake_timeout]),
+    2000 = expect(Conf, [vmq_server, listeners, vmqs,  {{127,0,0,1}, 1234}, tls_handshake_timeout]),
+    infinity = expect(Conf, [vmq_server, listeners, https,  {{127,0,0,1}, 443}, tls_handshake_timeout]).
 
 -define(stacktrace, try throw(foo) catch _:foo:Stacktrace -> Stacktrace end).
 

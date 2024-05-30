@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -14,8 +15,10 @@
 
 -module(vmq_time).
 
--export([timestamp/1,
-        is_past/1]).
+-export([
+    timestamp/1,
+    is_past/1
+]).
 
 -type timestamp() :: non_neg_integer().
 -type duration() :: non_neg_integer().

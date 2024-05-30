@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -14,13 +15,15 @@
 
 -module(vmq_peer_service).
 
--export([join/1,
-         leave/1,
-         members/0,
-         rename_member/2,
-         add_event_handler/2,
-         delete_event_handler/2,
-         call_event_handler/3]).
+-export([
+    join/1,
+    leave/1,
+    members/0,
+    rename_member/2,
+    add_event_handler/2,
+    delete_event_handler/2,
+    call_event_handler/3
+]).
 
 join(DiscoveryNode) ->
     vmq_plugin:only(cluster_join, [DiscoveryNode]).
@@ -42,4 +45,3 @@ delete_event_handler(Module, Reason) ->
 
 call_event_handler(Module, Msg, Timeout) ->
     vmq_plugin:only(cluster_events_call_handler, [Module, Msg, Timeout]).
-

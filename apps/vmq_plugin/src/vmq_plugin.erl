@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -13,11 +14,13 @@
 %% limitations under the License.
 
 -module(vmq_plugin).
--export([only/2,
-         all/2,
-         all_till_ok/2,
-         all_till_ok/3,
-         info/1]).
+-export([
+    only/2,
+    all/2,
+    all_till_ok/2,
+    all_till_ok/3,
+    info/1
+]).
 
 only(_Hook, _Args) ->
     {error, no_matching_hook_found}.

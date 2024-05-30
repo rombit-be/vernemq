@@ -1,4 +1,126 @@
-# VerneMQ 1.12.4
+## VerneMQ 2.0.0
+
+- New feature: Synchronized wait for retained message store
+- Add option for a default rule ("*") in database Lua scripts, so that Clients can fallback to default ACLs.
+
+## VerneMQ 2.0 Release Candidate
+
+- Introduce credentials obfusication that avoid printing secrets to logs and stack traces (breaking change)
+- New feature: Support prometheus namespace
+- New feature: Add logger support, instead of lager
+- Remove deprecated subscriber format (#2247)
+- Protect against empty XFF CN/Username
+- Add simple options to HTTP health listener (health/ping)
+- Remove deprecated allow_multiple_sessions 
+- Improve systemd support: Add support of systemd-notify
+- New feature: Allow downgrade of client stopped due to keepalive from warning to info message (logging.keepalive_as_warning = off)
+- Bugix: Persist QoS0 to disk in case of outgoing upgrade_qos (#2220)
+- 'vmq_http_api_v2': Set apikey as new default authentication method
+- Bugfix: Remove 'vmq_http_pub' from default listener group and enforce apikey as default (#2222)
+- New feature: "null" message store that disables persisting messages
+- Add environment variable support for erlang configuration arguments
+- 'vmq_admin': Introduce regex search for session show command
+- 'vmq_admin': Extend vmq-admin listener show with  TLS and MQTT listener settings
+- Improve error reporting (include client) in logs (#2184)
+- 'vmq_http_pub': Allows post in netsplit situations (follows allow_publish_during_netsplit global config)
+- 'vmq_admin': Add new command tls invalide-pem-cache to support easier certificate replacement
+- Add compatibility with [Erlang/OTP 26]
+- Add new command to vmq-admin to clear webhook cache (webhooks cache clear)
+- 'vmq_admin': Add commands allowing batch disconnects (vmq-admin session disconnect batch and vmq-admin session disconnect clients)
+- 'vmq_http_pub': Allow anonymous access (allow_anonymous = on)
+- New feature: Add configuration option disconnect_on_unauthorized_publish_v3 to force disconnect on unauthorized publish even for MQTT clients before v3.1.1
+- New feature: Add persistent message queueing functionality to `vmq_bridge` Plugin, using [ReplayQ](https://github.com/emqx/replayq)
+
+
+## VerneMQ 1.13.0
+
+- New Plugin: 'vmq_http_pub', allows to ingest MQTT messages via a HTTP REST interface
+- Allow configuration of `max_request_line_length` for HTTP(S) listeners
+- Improve memory footprint and performance of sessions that subscribe to many topics (new configurable `vmq_reg_ordered_trie` module, the old `vmq_reg_trie` is kept as default)
+- Bugfix: Use default regview as information source for status page 
+- Add support for x-forward-for (XFF) header (Websockets) (#1783)
+- Bugfix: QoS0 message shall ignore receive maximum setting (#2150)
+- Offline queues to online queue transition can (temporarily) override the max online queue size (#1663)
+- Fix processing of line endings in vmq_acl (#1897)
+- QoS0 messages for offline sessions now count towards the queue_unhandeled metric (#1528,#1536)
+- Allow overriding last will delay in plugins (#1998)
+- Improve error logging: Report invalid modifiers in hooks
+- Fix MQTT listener suspension and --kill_session flag in cluster leave.
+- Adapt nodetool escript to Erlang distribution protocol at boot, enabling IPv6 compat for vmq-admi
+- Expose more SWC sync protocol settings in vernemq.conf (number of SWC groups & more)
+- Add `vmq-admin retain delete` command to CLI (single topic delete only).
+- Fix per mountpoint filtering of `vmq-admin retain show`.
+- Add 'keypasswd': Allows setting password for pem keyfile (#1676)
+- Bugfix: Improve warning messages for unexpected frame type error to track origin (#1671)
+- Bugfix: Remove special chars in auto-generated client id (#1673)
+- Bugfix: Websocket returned error 500 and wrote to log, instead of returning 426 (protocol upgrade) #1983 
+- Allow to specify a maximum connection lifetime (per listener). The lifetime can be overwriten by on_register hooks.
+- Improve TLSv1.3 support (Documentation, CLI, Testsuite)
+- Improve HTTP/2 support for HTTPS listeners (#2117)
+- Make Redis username configurable in vmq_diversity.
+- Enable v5 protocol for WS and SSL listeners as a default.
+- Fix dev_n builds (make dev0 dev1...).
+- Fix issue [#2078](https://github.com/vernemq/vernemq/issues/2008) where the default MQTT listener fails to create in `vernemq.conf`.
+- Fix configuration problems when using Unix Domain Sockets.
+- Add support for compilation in ARM architectures (Tested on M1 Mac and Raspberry PI). Now we can use the `make rel` target to build a VerneMQ release for RaspberryPI.
+- CI Improvements:
+  - Test on the last 3 major OTP versions, following the Erlang/OTP support conventions.
+  - Test on Both Linux and OSX for each version.
+  - Add more extensive smoke test by publishing/subscribing to messages.
+- Add compatibility with [Erlang/OTP 25](https://www.erlang.org/blog/my-otp-25-highlights/).
+- Allow protection of all HTTP(s) endpoints with API keys (e.g. metrics)
+- Update bootstrap 4.6.2 in status page and add favicon
+- vmq_passwd -c no longer overwrites existing files by default.
+- Allow per-purpose HTTP endpoints (status, metrics, api) by assigning http_modules
+- Add support for TLS-PSK (Pre-Shared Key) for MQTTS (TLS) listeners
+- Fix regression in handling of the Proxy protocol for WebSockets.
+- Refactor metrics count of active connections, using 3 new gauges:
+  `active_mqtt_connections`, `active_mqttws_connections` (WebSocket) and
+  `total_active_connections`. Adapt Status page. This also fixes an error,
+  where the status page would show a false connection count.
+- Add `active_conns` and `all_conns` info to `vmq-admin listener show`.
+
+## VerneMQ 1.12.6.2
+
+- Add `max_ws_frame_size` setting to limit incoming WebSocket stream.
+
+## VerneMQ 1.12.6.1
+
+- Fix bug in webhooks metrics that crashed Prometheus endpoint
+
+## VerneMQ 1.12.6
+
+- Fix outgoing QoS and outgoing QoS upgrades.
+- Collect per webhook type (e.g. `on_publish_m5_requests`) metrics.
+- Fix vmqs (SSL) inter-node communication.
+- Store waiting pubrec packets in queue and add to waiting acks on reconnect.
+- Fix PostGres (`epgsql` 4.6.0) response format in `vmq_diversity`.
+- Fix Prometheus exposition format, related to MQTT v4 and v5 labels.
+- Add Unix domain listeners (to be configured as "listener.tcp.unix_socket = local:/tmp/my.sock:0")
+- Add new setting `tls_handshake_timeout` option to SSL listeners.
+- Fix webhook cache to not allow multiple entries per key
+- Fix recovery of waiting pubrecs in MQTT v5
+- Update `epgsql` to 4.6.1
+- Update `eredis` to 1.7.0 (vmq_diversity)
+- Update `eredis` to 1.7.0 (vmq_diversity)
+- Update `erlang-mongodb` to ref 713e8bd (vmq_diversity)
+- Update `sext` to 1.8.0
+- Update `stdout_formatter` to 0.2.4
+
+## VerneMQ 1.12.5
+
+- Update `git` clone protocol to `https`.
+- Update `erlang-pbkdf2` and `mongodb-erlang`, fixes Issue #1928
+- Fix `proxy_protocol_use_cn_as_username` config for WS listeners: the
+  CN now overrides the MQTT username correctly.
+- Add `?P_RESPONSE_INFO` property in `CONNACK` when `auth_on_register_m5_hook` sets the property.
+- Add per-listener `allow_anonymous_override` config (to open a single listener while allow_anonymous=off)
+- Update `certifi` to 2.9.0
+- Update `epgsql` to 4.6.0
+- Update `jsx` to 3.1.0 (vmq_diversity, vmq_webhooks)
+- Update `eredis` to 1.4.1 (vmq_diversity)
+
+## VerneMQ 1.12.4
 
   - Add additional bcrypt configuration options
   - Bump bcrypt version
@@ -8,6 +130,7 @@
   - Add `vmq-admin trace stop_all` command to stop unreachable traces.
   - Fix bridge configuration regarding CAP settings.
   - Add `prefer_online_before_local` shared subscription policy.
+
 ## VerneMQ 1.12.3
 
   -  Move from `r_mode` to read preference in VMQ Diversity MongoDB
@@ -144,7 +267,7 @@ Patch Release to:
 - Upgrade `epgsql` dependency to version 4.3.0 to get better error messages
   (#1336).
 - Add new `max_last_will_delay` value `client` which means the value from the
-  client is used instead of being overriden by the broker. This `client` value
+  client is used instead of being overridden by the broker. This `client` value
   is now the default. This setting only applies to MQTT 5.0 clients.
 - Add hidden option `response_timeout` to `vmq_webhooks` endpoints. With this
   the time `vmq_webhooks` waits for a response from the remote endpoint can be
@@ -182,7 +305,7 @@ Patch Release to:
   (#1292).
 - Fix MQTT 5.0 bug causing LWT not being sent when client disconnected with
   Disconnect with Will Message (0x04) (#1291).
-- Ensure MQTT 5.0 subscription identifers are added to messages delivered via
+- Ensure MQTT 5.0 subscription identifiers are added to messages delivered via
   shared subscriptions (#1294).
 - Fix protocol version check bug which would allow MQTT 5.0 clients to connect
   even if the MTT 5.0 protocol was not specified for the listener. This happened
@@ -398,7 +521,7 @@ Patch Release to:
   the CONNECT frame in `vmq_mqtt_pre_init` (#950, #962).
 - Fix issue which could cause `vmq-admin session show` to crash when using
   `--limit=X` to limit the number of returned results (#902).
-- Handle edge case in the websocket implementation which could cause warninigs
+- Handle edge case in the websocket implementation which could cause warnings
   when the session was terminating.
 - Expose `vernemq_dev_api:disconnect_by_subscriber_id/2` in lua
   `vmq_api.disconnect_by_subscriber_id/2`, an example looks like:
@@ -496,7 +619,7 @@ Patch Release to:
     the maximum allowed topic alias using the topic alias max property on the
     CONNACK packet (if it has been set to a non-zero value). The topic alias
     maximum property can be configured through the `topic_alias_max`
-    configuration variable or overriden in a plugin in the `auth_on_register`
+    configuration variable or overridden in a plugin in the `auth_on_register`
     hook. The broker will then handle topic aliases from the client as per the
     MQTTv5 spec.
 
@@ -535,7 +658,7 @@ Patch Release to:
 
 - Added on_message_drop hook that is called for every message dropped due to
   exceeding the MQTTv5 max_packet_size property, hitting the message expiry,
-  or when load shedding when enqueing messages.
+  or when load shedding when enqueuing messages.
 - Fix ordering bug in webhook subscribe topic authentication and topic rewrites
   (#823)
 - Fix issue when terminating the `vmq_server` application (#828).
@@ -604,7 +727,7 @@ Patch Release to:
 - Ensure the `vmq_bridge` is properly restarted after a crash (#785).
 - Fix issue where not calling `http.body(ref)` in a Lua script would not return
   the underlyning HTTP connection to the connection pool. This now happens
-  automatically, irregardless of the user calling `http.body(ref)` or not
+  automatically, regardless of the user calling `http.body(ref)` or not
   (#588).
 
 ## VerneMQ 1.4.0
@@ -654,7 +777,7 @@ Patch Release to:
   for a specific listener using
   `listener.tcp.specific_listener.allowed_protocol_versions`.
 - Fix bug causing an exception to be thrown when `vmq-admin cluster leave` is
-  used with a timout value less than 5 seconds (#642).
+  used with a timeout value less than 5 seconds (#642).
 - Small refactoring enabling to store versioned message store values. This is a
   preparation for MQTTv5.
 - Bugfix: Fix a bug that prevented user plugins with an explicit path to be
@@ -787,7 +910,7 @@ Patch Release to:
   (`persistent_client_expiration` in `vernemq.conf`) from being executed.
 - Make `vmq-admin session show` more robust when sessions are overloaded by
   limiting the time allowed to query each session. The default query timeout is
-  100ms, but can be overriden using `--rowtimeout=<TimeoutInMilliseconds>`.
+  100ms, but can be overridden using `--rowtimeout=<TimeoutInMilliseconds>`.
 - Add support for Erlang/OTP20.
 - Improve tracer usage text.
 - Fix `vmq_diversity` memcached issue (#460).
@@ -877,7 +1000,7 @@ Patch Release to:
 ### vmq_server
 
 - Improved the `vmq-admin list session` command with a limit option controlling
-  the returned number of sessions as well as the possibilty to customize which
+  the returned number of sessions as well as the possibility to customize which
   session data is returned.
 
 - Change to plugin administration. To make VerneMQ configuration more consistent
@@ -1142,7 +1265,7 @@ if professional support is required for upgrading.
 
 - Support for Erlang 18.
 
-- Reworked interal publish interface for plugins that require more control over
+- Reworked internal publish interface for plugins that require more control over
     the way VerneMQ publishes their messages (e.g. setting the dup & retain flags).
     Plugins which used the old 'PublishFun/2' MUST use the new 'PublishFun/3' which
     is specified as follows:
@@ -1285,7 +1408,7 @@ for the stored offline data.
 
 - Improved Message Reference Generation Performance
 
-- Upgraded to newest verison of Plumtree
+- Upgraded to newest version of Plumtree
 
 - Upgraded to Lager 3.0.1 (required to pretty print maps in log messages)
 
@@ -1319,7 +1442,7 @@ imcompatibilites:
 
     If you were running a clustered setup, make sure to revisit the clustering
     documentation as the specific ``listener.vmq.clustering`` configuration is needed
-    inside ``vernemq.conf`` to enable inter-node communicaton.
+    inside ``vernemq.conf`` to enable inter-node communication.
 
     We updated the format of the exposed metrics. Make sure to adjust your monitoring setup.
 

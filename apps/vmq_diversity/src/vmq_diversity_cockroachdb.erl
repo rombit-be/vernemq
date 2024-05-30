@@ -1,5 +1,6 @@
 %% Copyright 2019 Octavo Labs AG Zurich Switzerland (https://octavolabs.com)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -16,9 +17,11 @@
 -include_lib("luerl/include/luerl.hrl").
 
 %% API functions
--export([install/1,
-         squery/2,
-         equery/3]).
+-export([
+    install/1,
+    squery/2,
+    equery/3
+]).
 
 %%%===================================================================
 %%% API functions
@@ -38,9 +41,9 @@ equery(PoolName, Stmt, Params) ->
 %%%===================================================================
 table() ->
     [
-     {<<"execute">>, #erl_func{code=fun execute/2}},
-     {<<"ensure_pool">>, #erl_func{code=fun ensure_pool/2}},
-     {<<"hash_method">>, #erl_func{code=fun hash_method/2}}
+        {<<"execute">>, #erl_func{code = fun execute/2}},
+        {<<"ensure_pool">>, #erl_func{code = fun ensure_pool/2}},
+        {<<"hash_method">>, #erl_func{code = fun hash_method/2}}
     ].
 
 execute(As, St) ->
@@ -53,4 +56,4 @@ hash_method(_, St) ->
     {ok, DBConfigs} = application:get_env(vmq_diversity, db_config),
     DefaultConf = proplists:get_value(cockroachdb, DBConfigs),
     HashMethod = proplists:get_value(password_hash_method, DefaultConf),
-    {[atom_to_binary(HashMethod,utf8)], St}.
+    {[atom_to_binary(HashMethod, utf8)], St}.

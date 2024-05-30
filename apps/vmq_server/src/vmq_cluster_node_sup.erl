@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -17,18 +18,19 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0,
-         ensure_cluster_node/1,
-         get_cluster_node/1,
-         del_cluster_node/1,
-         node_status/1]).
+-export([
+    start_link/0,
+    ensure_cluster_node/1,
+    get_cluster_node/1,
+    del_cluster_node/1,
+    node_status/1
+]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(I, Type, Args), {I, {I, start_link, Args},
-                               permanent, 5000, Type, [I]}).
+-define(CHILD(I, Type, Args), {I, {I, start_link, Args}, permanent, 5000, Type, [I]}).
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -109,15 +111,15 @@ node_status(Node) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, {{one_for_one, 5, 10}, [
+    {ok,
+        {{one_for_one, 5, 10}, [
             ?CHILD(vmq_cluster_mon, worker, [])
-                                ]}}.
+        ]}}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 child_spec(Node) ->
-    {{vmq_cluster_node, Node}, {vmq_cluster_node, start_link, [Node]},
-     permanent, 5000, worker, [vmq_cluster_node]}.
-
-
+    {{vmq_cluster_node, Node}, {vmq_cluster_node, start_link, [Node]}, permanent, 5000, worker, [
+        vmq_cluster_node
+    ]}.

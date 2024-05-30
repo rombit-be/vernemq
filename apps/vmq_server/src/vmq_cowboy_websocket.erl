@@ -1,5 +1,5 @@
-%% Copyright 2019 Octavo Labs AG Zurich Switzerland (https://octavolabs.com)
-%%
+%% Copyright 2019-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -33,21 +33,29 @@
 is_upgrade_request(Req) ->
     cowboy_websocket:is_upgrade_request(Req).
 
--spec upgrade(Req, Env, module(), any())
-	-> {ok, Req, Env}
-	when Req::cowboy_req:req(), Env::cowboy_middleware:env().
+-spec upgrade(Req, Env, module(), any()) ->
+    {ok, Req, Env}
+when
+    Req :: cowboy_req:req(), Env :: cowboy_middleware:env().
 upgrade(Req, Env, Handler, HandlerState) ->
     cowboy_websocket:upgrade(Req, Env, Handler, HandlerState).
 
--spec upgrade(Req, Env, module(), any(), any())
-	-> {ok, Req, Env}
-	when Req::cowboy_req:req(), Env::cowboy_middleware:env().
+-spec upgrade(Req, Env, module(), any(), any()) ->
+    {ok, Req, Env}
+when
+    Req :: cowboy_req:req(), Env :: cowboy_middleware:env().
 upgrade(Req, Env, Handler, HandlerState, Opts) ->
     cowboy_websocket:upgrade(Req, Env, Handler, HandlerState, Opts).
 
--spec takeover(pid(), ranch:ref(), inet:socket() | {pid(), cowboy_stream:streamid()},
-	module() | undefined, any(), binary(),
-	any()) -> no_return().
+-spec takeover(
+    pid(),
+    ranch:ref(),
+    inet:socket() | {pid(), cowboy_stream:streamid()},
+    module() | undefined,
+    any(),
+    binary(),
+    any()
+) -> no_return().
 takeover(Parent, Ref, Socket, Transport, Opts, Buffer, {State, HandlerState0}) ->
     HandlerState1 = vmq_websocket:add_socket(Socket, HandlerState0),
     cowboy_websocket:takeover(Parent, Ref, Socket, Transport, Opts, Buffer, {State, HandlerState1}).
@@ -64,7 +72,7 @@ system_continue(Parent, Debug, Misc) ->
 system_terminate(Reason, Parent, Debug, Misc) ->
     cowboy_websocket:system_terminate(Reason, Parent, Debug, Misc).
 
--spec system_code_change(_, _, _, _)
-	-> {ok, any()}.
+-spec system_code_change(_, _, _, _) ->
+    {ok, any()}.
 system_code_change(Misc, Module, OldVsn, Extra) ->
     cowboy_websocket:system_code_change(Misc, Module, OldVsn, Extra).

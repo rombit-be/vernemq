@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -17,15 +18,15 @@
 -behaviour(supervisor).
 
 %% API functions
--export([start_link/0,
-         start_state/4
-        ]).
+-export([
+    start_link/0,
+    start_state/4
+]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CHILD(Id, Mod, Type, Args), {Id, {Mod, start_link, Args},
-                                     permanent, 5000, Type, [Mod]}).
+-define(CHILD(Id, Mod, Type, Args), {Id, {Mod, start_link, Args}, permanent, 5000, Type, [Mod]}).
 
 %%%===================================================================
 %%% API functions
@@ -42,9 +43,15 @@ start_link() ->
     supervisor:start_link(?MODULE, []).
 
 start_state(StateSup, Id, Script, ScriptMgrPid) ->
-    supervisor:start_child(StateSup, ?CHILD({vmq_diversity_script_state, Id},
-                                            vmq_diversity_script_state, worker,
-                                            [Id, Script, ScriptMgrPid])).
+    supervisor:start_child(
+        StateSup,
+        ?CHILD(
+            {vmq_diversity_script_state, Id},
+            vmq_diversity_script_state,
+            worker,
+            [Id, Script, ScriptMgrPid]
+        )
+    ).
 
 %%%===================================================================
 %%% Supervisor callbacks

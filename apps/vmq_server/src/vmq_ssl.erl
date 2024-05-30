@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -14,9 +15,11 @@
 
 -module(vmq_ssl).
 -include_lib("public_key/include/public_key.hrl").
--export([socket_to_common_name/1,
-         cert_to_common_name/1,
-         opts/1]).
+-export([
+    socket_to_common_name/1,
+    cert_to_common_name/1,
+    opts/1
+]).
 
 socket_to_common_name(Socket) ->
     case ssl:peercert(Socket) of
@@ -45,62 +48,98 @@ extract_cn({rdnSequence, List}) ->
     extract_cn2(List).
 
 -spec extract_cn2(list()) -> undefined | list().
-extract_cn2([[#'AttributeTypeAndValue'{
-                 type=?'id-at-commonName',
-                 value={utf8String, CN}}]|_]) ->
+extract_cn2([
+    [
+        #'AttributeTypeAndValue'{
+            type = ?'id-at-commonName',
+            value = {utf8String, CN}
+        }
+    ]
+    | _
+]) ->
     list_to_binary(unicode:characters_to_list(CN));
-extract_cn2([[#'AttributeTypeAndValue'{
-                 type=?'id-at-commonName',
-                 value={printableString, CN}}]|_]) ->
+extract_cn2([
+    [
+        #'AttributeTypeAndValue'{
+            type = ?'id-at-commonName',
+            value = {printableString, CN}
+        }
+    ]
+    | _
+]) ->
     list_to_binary(unicode:characters_to_list(CN));
-extract_cn2([_|Rest]) ->
+extract_cn2([_ | Rest]) ->
     extract_cn2(Rest);
-extract_cn2([]) -> undefined.
+extract_cn2([]) ->
+    undefined.
+
+opts(certfiles, Opts) ->
+    [
+        {cacertfile, proplists:get_value(cafile, Opts)},
+        {certfile, proplists:get_value(certfile, Opts)},
+        {keyfile, proplists:get_value(keyfile, Opts)},
+        {password, proplists:get_value(keypasswd, Opts, "")}
+    ];
+opts(cert, Opts) ->
+    case {vmq_ssl_psk:psk_support_enabled(Opts), proplists:get_value(certfile, Opts)} of
+        {true, undefined} -> [];
+        {true, _} -> opts(certfiles, Opts);
+        {false, _} -> opts(certfiles, Opts)
+    end.
 
 opts(Opts) ->
-    [{cacertfile, proplists:get_value(cafile, Opts)},
-     {certfile, proplists:get_value(certfile, Opts)},
-     {keyfile, proplists:get_value(keyfile, Opts)},
-     {ciphers, ciphersuite_transform(proplists:get_value(ciphers, Opts, []))},
-     {eccs, proplists:get_value(eccs, Opts, ssl:eccs())},
-     {fail_if_no_peer_cert, proplists:get_value(require_certificate,
-                                                Opts, false)},
-     {verify, case
-                  proplists:get_value(require_certificate, Opts, false) or
-                  proplists:get_value(use_identity_as_username, Opts, false)
-              of
-                  true -> verify_peer;
-                  _ -> verify_none
-              end},
-     {verify_fun, {fun verify_ssl_peer/3,
-                   proplists:get_value(crlfile, Opts, no_crl)}},
-     {depth, proplists:get_value(depth, Opts, 1)},
-     {versions, [proplists:get_value(tls_version, Opts, 'tlsv1.2')]}
-     |
-     []
-     %% TODO: support for flexible partial chain functions
-     % case support_partial_chain() of
-     %     true ->
-     %         [{partial_chain, fun([DerCert|_]) ->
-     %                                  {trusted_ca, DerCert}
-     %                          end}];
-     %     false ->
-     %         []
-     % end
-    ].
+    opts(cert, Opts) ++
+        vmq_ssl_psk:opts(Opts) ++
+        [
+            {ciphers, ciphersuite_transform(proplists:get_value(ciphers, Opts, []), Opts)},
+            {eccs, proplists:get_value(eccs, Opts, ssl:eccs())},
+            {fail_if_no_peer_cert,
+                proplists:get_value(
+                    require_certificate,
+                    Opts,
+                    false
+                )},
+            {verify,
+                case
+                    proplists:get_value(require_certificate, Opts, false) or
+                        proplists:get_value(use_identity_as_username, Opts, false)
+                of
+                    true -> verify_peer;
+                    _ -> verify_none
+                end},
+            {verify_fun, {fun verify_ssl_peer/3, proplists:get_value(crlfile, Opts, no_crl)}},
+            {depth, proplists:get_value(depth, Opts, 1)},
+            {versions, [proplists:get_value(tls_version, Opts, 'tlsv1.2')]}
+            | []
+            %% TODO: support for flexible partial chain functions
+            % case support_partial_chain() of
+            %     true ->
+            %         [{partial_chain, fun([DerCert|_]) ->
+            %                                  {trusted_ca, DerCert}
+            %                          end}];
+            %     false ->
+            %         []
+            % end
+        ].
 
--spec ciphersuite_transform([string()]) -> [string()].
-ciphersuite_transform([]) ->
-    ciphers();
-ciphersuite_transform(CiphersString) when is_list(CiphersString) ->
+ciphersuite_transform([], Opts) ->
+    ciphers() ++ vmq_ssl_psk:ciphers(Opts);
+ciphersuite_transform(CiphersString, _) when is_list(CiphersString) ->
     CiphersString.
 
--spec verify_ssl_peer(_, 'valid' | 'valid_peer' |
-                      {'bad_cert', _} |
-                      {'extension', _}, _) ->
-    {'fail', 'is_self_signed' |
-     {'bad_cert', _}} |
-    {'unknown', _} | {'valid', _}.
+-spec verify_ssl_peer(
+    _,
+    'valid'
+    | 'valid_peer'
+    | {'bad_cert', _}
+    | {'extension', _},
+    _
+) ->
+    {'fail',
+        'is_self_signed'
+        | {'bad_cert', _}}
+    | {'unknown', _}
+    | {'valid', _}.
 verify_ssl_peer(_, {bad_cert, _} = Reason, _) ->
     {fail, Reason};
 verify_ssl_peer(_, {extension, _}, UserState) ->
@@ -129,40 +168,42 @@ check_user_state(UserState, Cert) ->
     end.
 
 ciphers() ->
-    ["ECDHE-ECDSA-AES256-GCM-SHA384"
-     ,"ECDHE-RSA-AES256-GCM-SHA384"
-     ,"ECDHE-ECDSA-AES256-SHA384"
-     ,"ECDHE-RSA-AES256-SHA384"
-     ,"ECDHE-ECDSA-DES-CBC3-SHA"
-     ,"ECDH-ECDSA-AES256-GCM-SHA384"
-     ,"ECDH-RSA-AES256-GCM-SHA384"
-     ,"ECDH-ECDSA-AES256-SHA384"
-     ,"ECDH-RSA-AES256-SHA384"
-     ,"DHE-DSS-AES256-GCM-SHA384"
-     ,"DHE-DSS-AES256-SHA256"
-     ,"AES256-GCM-SHA384"
-     ,"AES256-SHA256"
-     ,"ECDHE-ECDSA-AES128-GCM-SHA256"
-     ,"ECDHE-RSA-AES128-GCM-SHA256"
-     ,"ECDHE-ECDSA-AES128-SHA256"
-     ,"ECDHE-RSA-AES128-SHA256"
-     ,"ECDH-ECDSA-AES128-GCM-SHA256"
-     ,"ECDH-RSA-AES128-GCM-SHA256"
-     ,"ECDH-ECDSA-AES128-SHA256"
-     ,"ECDH-RSA-AES128-SHA256"
-     ,"DHE-DSS-AES128-GCM-SHA256"
-     ,"DHE-DSS-AES128-SHA256"
-     ,"AES128-GCM-SHA256"
-     ,"AES128-SHA256"
-     ,"ECDHE-ECDSA-AES256-SHA"
-     ,"ECDHE-RSA-AES256-SHA"
-     ,"DHE-DSS-AES256-SHA"
-     ,"ECDH-ECDSA-AES256-SHA"
-     ,"ECDH-RSA-AES256-SHA"
-     ,"AES256-SHA"
-     ,"ECDHE-ECDSA-AES128-SHA"
-     ,"ECDHE-RSA-AES128-SHA"
-     ,"DHE-DSS-AES128-SHA"
-     ,"ECDH-ECDSA-AES128-SHA"
-     ,"ECDH-RSA-AES128-SHA"
-     ,"AES128-SHA"].
+    [
+        "ECDHE-ECDSA-AES256-GCM-SHA384",
+        "ECDHE-RSA-AES256-GCM-SHA384",
+        "ECDHE-ECDSA-AES256-SHA384",
+        "ECDHE-RSA-AES256-SHA384",
+        "ECDHE-ECDSA-DES-CBC3-SHA",
+        "ECDH-ECDSA-AES256-GCM-SHA384",
+        "ECDH-RSA-AES256-GCM-SHA384",
+        "ECDH-ECDSA-AES256-SHA384",
+        "ECDH-RSA-AES256-SHA384",
+        "DHE-DSS-AES256-GCM-SHA384",
+        "DHE-DSS-AES256-SHA256",
+        "AES256-GCM-SHA384",
+        "AES256-SHA256",
+        "ECDHE-ECDSA-AES128-GCM-SHA256",
+        "ECDHE-RSA-AES128-GCM-SHA256",
+        "ECDHE-ECDSA-AES128-SHA256",
+        "ECDHE-RSA-AES128-SHA256",
+        "ECDH-ECDSA-AES128-GCM-SHA256",
+        "ECDH-RSA-AES128-GCM-SHA256",
+        "ECDH-ECDSA-AES128-SHA256",
+        "ECDH-RSA-AES128-SHA256",
+        "DHE-DSS-AES128-GCM-SHA256",
+        "DHE-DSS-AES128-SHA256",
+        "AES128-GCM-SHA256",
+        "AES128-SHA256",
+        "ECDHE-ECDSA-AES256-SHA",
+        "ECDHE-RSA-AES256-SHA",
+        "DHE-DSS-AES256-SHA",
+        "ECDH-ECDSA-AES256-SHA",
+        "ECDH-RSA-AES256-SHA",
+        "AES256-SHA",
+        "ECDHE-ECDSA-AES128-SHA",
+        "ECDHE-RSA-AES128-SHA",
+        "DHE-DSS-AES128-SHA",
+        "ECDH-ECDSA-AES128-SHA",
+        "ECDH-RSA-AES128-SHA",
+        "AES128-SHA"
+    ].

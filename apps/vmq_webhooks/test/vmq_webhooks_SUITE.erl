@@ -1,6 +1,7 @@
 -module(vmq_webhooks_SUITE).
 -include_lib("common_test/include/ct.hrl").
 -include_lib("vernemq_dev/include/vernemq_dev.hrl").
+-include_lib("vmq_server/include/vmq_metrics.hrl").
 -include("vmq_webhooks_test.hrl").
 
 
@@ -101,10 +102,14 @@ http() ->
      base64payload_test,
      auth_on_register_undefined_creds_test,
      cache_auth_on_register,
+     cache_auth_on_register_m5,
      cache_auth_on_publish,
+     cache_auth_on_publish_m5,
      cache_auth_on_subscribe,
+     cache_auth_on_subscribe_m5,
      cache_expired_entry,
-     cli_allow_query_parameters_test
+     cli_allow_query_parameters_test,
+     metrics_test
     ].
 
 https() ->
@@ -164,6 +169,24 @@ cache_auth_on_register(_) ->
        auth_on_register} := 1} = vmq_webhooks_cache:stats(),
     deregister_hook(auth_on_register, Endpoint).
 
+cache_auth_on_register_m5(_) ->
+    Endpoint = ?ENDPOINT ++ "/cache",
+    Self = pid_to_bin(self()),
+    register_hook(auth_on_register_m5, Endpoint),
+    ok = vmq_plugin:all_till_ok(auth_on_register_m5,
+                                       [?PEER, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, Self, ?PASSWORD, true, #{} ]),
+    exp_response(cache_auth_on_register_m5_ok),
+    ok = vmq_plugin:all_till_ok(auth_on_register_m5,
+                                       [?PEER, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, Self, ?PASSWORD, true, #{} ]),
+    ok = exp_nothing(200),
+    #{{entries,<<"http://localhost:34567/cache">>,
+        auth_on_register_m5} := 1,
+    {hits,<<"http://localhost:34567/cache">>,
+        auth_on_register_m5} := 1,
+    {misses,<<"http://localhost:34567/cache">>,
+        auth_on_register_m5} := 1} = vmq_webhooks_cache:stats(),
+    deregister_hook(auth_on_register_m5, Endpoint).
+    
 cache_auth_on_publish(_) ->
     Endpoint = ?ENDPOINT ++ "/cache",
     Self = pid_to_bin(self()),
@@ -182,6 +205,24 @@ cache_auth_on_publish(_) ->
        auth_on_publish} := 1} = vmq_webhooks_cache:stats(),
     deregister_hook(auth_on_publish, Endpoint).
 
+cache_auth_on_publish_m5(_) ->
+    Endpoint = ?ENDPOINT ++ "/cache",
+    Self = pid_to_bin(self()),
+    register_hook(auth_on_publish_m5, Endpoint),
+    ok = vmq_plugin:all_till_ok(auth_on_publish_m5,
+                      [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false, #{}]),
+    exp_response(auth_on_publish_m5_ok),
+    ok = vmq_plugin:all_till_ok(auth_on_publish_m5,
+                      [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false, #{}]),
+    ok = exp_nothing(200),
+    #{{entries,<<"http://localhost:34567/cache">>,
+        auth_on_publish_m5} := 1,
+        {hits,<<"http://localhost:34567/cache">>,
+        auth_on_publish_m5} := 1,
+        {misses,<<"http://localhost:34567/cache">>,
+        auth_on_publish_m5} := 1} = vmq_webhooks_cache:stats(),
+    deregister_hook(auth_on_publish_m5, Endpoint).
+    
 cache_auth_on_subscribe(_) ->
     Endpoint = ?ENDPOINT ++ "/cache",
     Self = pid_to_bin(self()),
@@ -200,6 +241,34 @@ cache_auth_on_subscribe(_) ->
        auth_on_subscribe} := 1} = vmq_webhooks_cache:stats(),
     deregister_hook(auth_on_subscribe, Endpoint).
 
+cache_auth_on_subscribe_m5(_) ->
+    Endpoint = ?ENDPOINT ++ "/cache",
+    Self = pid_to_bin(self()),
+    register_hook(auth_on_subscribe_m5, Endpoint),
+    ok = vmq_plugin:all_till_ok(auth_on_subscribe_m5,
+                      [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID},
+                       [{?TOPIC, {1,#{no_local => false,rap => false,
+                                      retain_handling => send_retain}}}],
+                       #{?P_USER_PROPERTY =>
+                             [{<<"k1">>, <<"v1">>}],
+                         ?P_SUBSCRIPTION_ID => [1,2,3]}]),
+    exp_response(cache_auth_on_subscribe_m5_ok),
+    ok = vmq_plugin:all_till_ok(auth_on_subscribe_m5,
+                      [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID},
+                       [{?TOPIC, {1,#{no_local => false,rap => false,
+                                      retain_handling => send_retain}}}],
+                       #{?P_USER_PROPERTY =>
+                             [{<<"k1">>, <<"v1">>}],
+                         ?P_SUBSCRIPTION_ID => [1,2,3]}]),
+    ok = exp_nothing(200),
+    #{{entries,<<"http://localhost:34567/cache">>,
+        auth_on_subscribe_m5} := 1,
+        {hits,<<"http://localhost:34567/cache">>,
+        auth_on_subscribe_m5} := 1,
+        {misses,<<"http://localhost:34567/cache">>,
+        auth_on_subscribe_m5} := 1} = vmq_webhooks_cache:stats(),
+    deregister_hook(auth_on_subscribe_m5, Endpoint).
+    
 auth_on_register_test(_) ->
     register_hook(auth_on_register, ?ENDPOINT),
     ok = vmq_plugin:all_till_ok(auth_on_register,
@@ -278,7 +347,7 @@ on_deliver_test(_) ->
     register_hook(on_deliver, ?ENDPOINT),
     Self = pid_to_bin(self()),
     ok = vmq_plugin:all_till_ok(on_deliver,
-                                [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false]),
+                                [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false, #{}]),
     ok = exp_response(on_deliver_ok),
     deregister_hook(on_deliver, ?ENDPOINT).
 
@@ -540,6 +609,30 @@ cli_allow_query_parameters_test(_) ->
     ok = register_hook(auth_on_register, EndpointWithParams),
     [] = deregister_hook(auth_on_register, EndpointWithParams).
 
+metrics_test(_) ->
+    register_hook(on_session_expired, ?ENDPOINT),
+    StartReqCntr = find_metric_value(webhooks_on_session_expired_requests),
+    StartErrCntr = find_metric_value(webhooks_on_session_expired_errors),
+    StartSentBytesCntr = find_metric_value(webhooks_on_session_expired_bytes_sent),
+    Self = pid_to_bin(self()),
+    [next] = vmq_plugin:all(on_session_expired, [{?MOUNTPOINT, Self}]),
+    ok = exp_response(on_session_expired_ok),
+    EndReqCntr = find_metric_value(webhooks_on_session_expired_requests),
+    EndErrCntr = find_metric_value(webhooks_on_session_expired_errors),
+    EndSentBytesCntr = find_metric_value(webhooks_on_session_expired_bytes_sent),
+    1 = EndReqCntr - StartReqCntr,
+    0 = EndErrCntr - StartErrCntr,
+    true = (EndSentBytesCntr - StartSentBytesCntr) > 0,
+    {ok, [{text, _Text}]} = vmq_server_cmd:metrics(),
+    deregister_hook(on_session_expired, ?ENDPOINT).
+
+find_metric_value(Id) ->
+    Metrics = vmq_metrics:metrics(),
+    {value, {_MetricDef, Value}} = lists:search(fun({Metric, _V}) ->
+        Metric#metric_def.id =:= Id
+    end, Metrics),
+    Value.
+
 %% HTTPS Tests
 
 %% Given a CA that signed the endpoint's server certificate, the webhook works
@@ -592,7 +685,7 @@ base_https_test(Config, ServerOpts, ClientSSLEnv) ->
     register_hook(on_deliver, ?HTTPS_ENDPOINT),
     Self = pid_to_bin(self()),
     _ = vmq_plugin:all_till_ok(on_deliver,
-                                [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false]),
+                                [Self, {?MOUNTPOINT, ?ALLOWED_CLIENT_ID}, 1, ?TOPIC, ?PAYLOAD, false, #{}]),
     ExpResponse = exp_response(on_deliver_ok),
     clear_ssl_app_env(),
     deregister_hook(on_deliver, ?HTTPS_ENDPOINT),
@@ -606,7 +699,7 @@ base_https_test(Config, ServerOpts, ClientSSLEnv) ->
 %% If a test fails, we don't want subsequent tests
 %% failing because the handler is already started.
 start_endpoint_tls(Opts) ->
-    webhooks_handler:stop_endpoint_tls(),
+   % webhooks_handler:stop_endpoint_tls(),
     webhooks_handler:start_endpoint_tls(Opts).
 
 https_port(Config) -> ?config(https_port, Config).

@@ -1,5 +1,6 @@
 %% Copyright 2019 Octavo Labs AG Zurich Switzerland (https://octavolabs.com)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -16,19 +17,19 @@
 
 -export([install/1]).
 
-
 install(St) ->
     luerl_emul:alloc_table(table(), St).
 
 table() ->
     [
-     {<<"hash">>, #erl_func{code=fun hash/2}}
+        {<<"hash">>, #erl_func{code = fun hash/2}}
     ].
 
-hash([Alg, Data]=Args, St)
-  when is_binary(Alg), is_binary(Data) ->
+hash([Alg, Data] = Args, St) when
+    is_binary(Alg), is_binary(Data)
+->
     try
-        {[crypto:hash(binary_to_existing_atom(Alg,utf8), Data)], St}
+        {[crypto:hash(binary_to_existing_atom(Alg, utf8), Data)], St}
     catch
         error:badarg ->
             luerl_lib:badarg_error(hash, Args, St)

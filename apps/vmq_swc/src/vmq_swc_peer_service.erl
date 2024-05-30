@@ -1,7 +1,8 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2014 Helium Systems, Inc.  All Rights Reserved.
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
 %% except in compliance with the License.  You may obtain
@@ -19,16 +20,18 @@
 %% -------------------------------------------------------------------
 
 -module(vmq_swc_peer_service).
+-include_lib("kernel/include/logger.hrl").
 
--export([join/1,
-         join/2,
-         join/3,
-         attempt_join/1,
-         attempt_join/2,
-         leave/1,
-         stop/0,
-         stop/1
-        ]).
+-export([
+    join/1,
+    join/2,
+    join/3,
+    attempt_join/1,
+    attempt_join/2,
+    leave/1,
+    stop/0,
+    stop/1
+]).
 
 %% @doc prepare node to join a cluster
 join(Node) ->
@@ -47,10 +50,26 @@ join(_, Node, _Auto) ->
     attempt_join(Node).
 
 attempt_join(Node) ->
-    lager:info("Sent join request to: ~p~n", [Node]),
+    {_NrOfGroups, SwcGroups} = persistent_term:get({vmq_swc_plugin, swc}),
+    PreventNonEmptyJoin = application:get_env(vmq_swc, prevent_nonempty_join, true),
+    case PreventNonEmptyJoin of
+        true ->
+            case vmq_swc_plugin:history(SwcGroups) of
+                {0, 0, true} ->
+                    connect_node(Node);
+                _ ->
+                    ?LOG_INFO("Cannot join a cluster, as local node ~p is non-empty.~n", [node()]),
+                    {error, non_empty_node}
+            end;
+        _ ->
+            connect_node(Node)
+    end.
+
+connect_node(Node) ->
+    ?LOG_INFO("Sent join request to: ~p~n", [Node]),
     case net_kernel:connect_node(Node) of
         false ->
-            lager:info("Unable to connect to ~p~n", [Node]),
+            ?LOG_INFO("Unable to connect to ~p~n", [Node]),
             {error, not_reachable};
         true ->
             {ok, Local} = vmq_swc_peer_service_manager:get_local_state(),
@@ -64,7 +83,10 @@ attempt_join(Node, Local) ->
     %% broadcast to all nodes
     %% get peer list
     Members = riak_dt_orswot:value(Merged),
-    _ = [gen_server:cast({vmq_swc_peer_service_gossip, P}, {receive_state, Merged}) || P <- Members],
+    _ = [
+        gen_server:cast({vmq_swc_peer_service_gossip, P}, {receive_state, Merged})
+     || P <- Members
+    ],
     ok.
 
 leave(_Args) when is_list(_Args) ->
@@ -87,7 +109,7 @@ leave(_Args) when is_list(_Args) ->
                     leave([])
             end;
         {error, singleton} ->
-            lager:warning("Cannot leave, not a member of a cluster.")
+            ?LOG_WARNING("Cannot leave, not a member of a cluster.")
     end;
 leave(_Args) ->
     leave([]).
@@ -96,7 +118,7 @@ stop() ->
     stop("received stop request").
 
 stop(Reason) ->
-    lager:notice("~p", [Reason]),
+    ?LOG_NOTICE("~p", [Reason]),
     ok.
 
 random_peer(Leave) ->

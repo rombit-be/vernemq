@@ -1,5 +1,6 @@
 %% Copyright 2018 Erlio GmbH Basel Switzerland (http://erl.io)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -14,10 +15,12 @@
 
 -module(vmq_diversity).
 
--export([start/0,
-         load_script/1,
-         reload_script/1,
-         unload_script/1]).
+-export([
+    start/0,
+    load_script/1,
+    reload_script/1,
+    unload_script/1
+]).
 
 start() ->
     {ok, _} = application:ensure_all_started(vmq_diversity),

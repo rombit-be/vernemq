@@ -1,5 +1,6 @@
 %% Copyright 2019 Octavo Labs AG Zurich Switzerland (http://octavolabs.com)
-%%
+%% Copyright 2019-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -14,17 +15,21 @@
 
 -module(vmq_message_store).
 -include("vmq_server.hrl").
--export([start/0,
-         stop/0,
-         write/2,
-         read/2,
-         delete/2,
-         find/2]).
+-include_lib("kernel/include/logger.hrl").
+
+-export([
+    start/0,
+    stop/0,
+    write/2,
+    read/2,
+    delete/2,
+    find/2
+]).
 
 start() ->
     Impl = application:get_env(vmq_server, message_store_impl, vmq_generic_msg_store),
     Ret = vmq_plugin_mgr:enable_system_plugin(Impl, [internal]),
-    lager:info("Try to start ~p: ~p", [Impl, Ret]),
+    ?LOG_INFO("Trying to start ~p: ~p", [Impl, Ret]),
     Ret.
 
 stop() ->
@@ -39,9 +44,9 @@ stop() ->
     % needs to be addressed when reworking the plugin system.
     Impl = application:get_env(vmq_server, message_store_impl, vmq_generic_msg_store),
     _ = spawn(fun() ->
-                      Ret = vmq_plugin_mgr:disable_plugin(Impl),
-                      lager:info("Try to stop ~p: ~p", [Impl, Ret])
-              end),
+        Ret = vmq_plugin_mgr:disable_plugin(Impl),
+        ?LOG_INFO("Trying to stop ~p: ~p", [Impl, Ret])
+    end),
     ok.
 
 write(SubscriberId, Msg) ->
@@ -53,6 +58,8 @@ read(SubscriberId, MsgRef) ->
 delete(SubscriberId, MsgRef) ->
     vmq_plugin:only(msg_store_delete, [SubscriberId, MsgRef]).
 
-find(SubscriberId, Type) when Type =:= queue_init;
-                              Type =:= other ->
+find(SubscriberId, Type) when
+    Type =:= queue_init;
+    Type =:= other
+->
     vmq_plugin:only(msg_store_find, [SubscriberId, Type]).

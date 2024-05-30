@@ -6,7 +6,7 @@
 %% a name. vmq_webhooks.<name>.hook = <hook> associates the hook
 %% <hook> with the name <name>. Webhooks are registered in the order
 %% of the name given to it. Therefore a webhook with name 'webhook1'
-%% is regisered before a webhook with the name 'webhook2'.
+%% is registered before a webhook with the name 'webhook2'.
 {mapping, "vmq_webhooks.$name.hook", "vmq_webhooks.user_webhooks",
  [
   {datatype, {enum,
@@ -55,7 +55,7 @@
  ]}.
 
 %% @doc Applies only to the auth_on_publish and auth_on_publish_m5
-%% webhooks. If true the MQTT payload is ommitted from the JSON
+%% webhooks. If true the MQTT payload is omitted from the JSON
 %% object. Defaults to false.
 {mapping, "vmq_webhooks.$name.no_payload", "vmq_webhooks.user_webhooks",
  [

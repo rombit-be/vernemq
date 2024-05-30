@@ -1,5 +1,6 @@
 %% Copyright 2018 Octavo Labs AG Basel Switzerland (http://octavolabs.com)
-%%
+%% Copyright 2018-2024 Octavo Labs/VerneMQ (https://vernemq.com/)
+%% and Individual Contributors.
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -16,7 +17,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, active_mqtt_connections/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -27,16 +28,36 @@
 %%% API functions
 %%%===================================================================
 
+active_mqtt_connections() ->
+    lists:foldl(
+        fun
+            % Unix sockets will also be counted under "mqtt"
+            ({mqtt, _, _, _, _, _, Active, _}, {MQTT, WS}) ->
+                {MQTT + Active, WS};
+            ({mqtts, _, _, _, _, _, Active, _}, {MQTT, WS}) ->
+                {MQTT + Active, WS};
+            ({mqttws, _, _, _, _, _, Active, _}, {MQTT, WS}) ->
+                {MQTT, WS + Active};
+            ({mqttwss, _, _, _, _, _, Active, _}, {MQTT, WS}) ->
+                {MQTT, WS + Active};
+            (_, Sum) ->
+                Sum
+        end,
+        {0, 0},
+        vmq_ranch_config:listeners()
+    ).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> {ok, Pid :: pid()} |
-                      {error, {already_started, Pid :: pid()}} |
-                      {error, {shutdown, term()}} |
-                      {error, term()} |
-                      ignore.
+-spec start_link() ->
+    {ok, Pid :: pid()}
+    | {error, {already_started, Pid :: pid()}}
+    | {error, {shutdown, term()}}
+    | {error, term()}
+    | ignore.
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
@@ -54,25 +75,28 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec init(Args :: term()) ->
-                  {ok, {SupFlags :: supervisor:sup_flags(),
-                        [ChildSpec :: supervisor:child_spec()]}} |
-                  ignore.
+    {ok, {SupFlags :: supervisor:sup_flags(), [ChildSpec :: supervisor:child_spec()]}}
+    | ignore.
 init([]) ->
-
-    SupFlags = #{strategy => one_for_one,
-                 intensity => 1,
-                 period => 5},
+    SupFlags = #{
+        strategy => one_for_one,
+        intensity => 1,
+        period => 5
+    },
 
     ChildSpecs =
-        [#{id => vmq_ranch_config,
-           start => {vmq_ranch_config, start_link, []},
-           restart => permanent,
-           shutdown => 5000,
-           type => worker,
-           modules => [vmq_ranch_config]}
+        [
+            #{
+                id => vmq_ranch_config,
+                start => {vmq_ranch_config, start_link, []},
+                restart => permanent,
+                shutdown => 5000,
+                type => worker,
+                modules => [vmq_ranch_config]
+            }
 
-         %% TODO: Add ranch supervisor here after we've moved to
-         %% Cowboy 2.0 and
+            %% TODO: Add ranch supervisor here after we've moved to
+            %% Cowboy 2.0 and
         ],
 
     {ok, {SupFlags, ChildSpecs}}.
